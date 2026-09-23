@@ -1,62 +1,174 @@
-# 🧠 Semantic Segmentation Deployment
+# U-Net Semantic Segmentation with MobileNetV2
 
-A production-ready project scaffold for deploying a U-Net semantic segmentation model using Streamlit Cloud. This repository provides modular inference, robust preprocessing, and interactive visualizations.
+A deep learning project for binary semantic segmentation using a **U-Net architecture with a pretrained MobileNetV2 encoder**. The project covers transfer learning, custom loss functions, model training, evaluation, image segmentation, post-processing, and interactive deployment with Streamlit.
 
-## 📁 Folder Structure
+## Project Overview
 
-```
-semantic-segmentation-deployment/
-│
-├── app.py                 # Local testing script for CLI inference
-├── streamlit_app.py       # Streamlit UI application 
-├── requirements.txt       # Python package dependencies
-├── packages.txt           # OS-level dependencies (e.g. libgl1 for OpenCV)
-├── README.md              # Project documentation
-│
-├── model/
-│   └── semantic_segmentation_model.keras  # Pre-trained U-Net model
-│
-├── utils/
-│   ├── predictor.py       # Model loading and inference logic
-│   ├── preprocessing.py   # Image normalization and resizing
-│   └── visualization.py   # Mask overlay generation functions
-│
-└── assets/
-    └── demo.png           # Sample image for testing
-```
+The goal is to build a semantic segmentation model that identifies the target region at the **pixel level** rather than simply classifying the entire image.
 
-## 🧠 Model Description
-The model located at `model/semantic_segmentation_model.keras` is a Binary Semantic Segmentation model built using TensorFlow/Keras. It uses a U-Net architecture with a MobileNetV2 pretrained encoder. The model is capable of predicting binary masks on given image inputs.
+Unlike object detection, which predicts bounding boxes around objects, semantic segmentation assigns a class label to individual pixels.
 
-## 🚀 How to Run Locally
+The project uses **U-Net with MobileNetV2** as the encoder to combine strong image feature extraction with precise segmentation.
 
-### 1. Install Dependencies
+## Model Architecture
+
+The model is based on a U-Net architecture with:
+
+* **MobileNetV2** as the pretrained encoder
+* Transfer learning from ImageNet pretrained weights
+* U-Net decoder for recovering spatial information
+* Skip connections between encoder and decoder layers
+* Binary segmentation output
+
+The pretrained MobileNetV2 encoder provides useful visual features while the U-Net decoder reconstructs a detailed segmentation mask.
+
+## Loss Function and Metrics
+
+Because segmentation quality depends on both pixel-level classification and overlap with the target region, the project uses a combined loss:
+
+**Combined Loss = Binary Cross-Entropy + Dice Loss**
+
+The project also uses the **Dice Coefficient** as a segmentation metric.
+
+### Dice Coefficient
+
+Dice measures the overlap between the predicted mask and the ground-truth mask:
+
+$$
+Dice = \frac{2|Prediction \cap GroundTruth|}
+{|Prediction| + |GroundTruth|}
+$$
+
+A higher Dice score indicates better overlap between the predicted and true segmentation regions.
+
+## Training
+
+The model was trained for up to **100 epochs** with:
+
+* Batch size: 8
+* Early stopping
+* Model checkpointing
+* Validation monitoring
+* Best model weight restoration
+
+Early stopping was configured with a patience of **15 epochs**, while the best model checkpoint was saved during training.
+
+The model reached a validation Dice score of approximately **0.93+** during training, with the highest observed validation Dice around **0.937**.
+
+> The checkpoint was selected according to validation loss rather than selecting the epoch solely by Dice score.
+
+## Inference Pipeline
+
+The deployment pipeline performs the following steps:
+
+1. Load the trained U-Net model.
+2. Load and preprocess the input image.
+3. Resize the image to the model input size.
+4. Generate a pixel-level prediction.
+5. Apply a confidence threshold to obtain a binary mask.
+6. Apply morphological opening and closing to reduce small noise.
+7. Resize the predicted mask back to the original image dimensions.
+8. Generate an overlay showing the predicted segmentation on the original image.
+
+## Streamlit Application
+
+A Streamlit application is included for interactive inference.
+
+The application allows users to:
+
+* Upload their own image.
+* Use the included demo image.
+* Adjust the segmentation confidence threshold.
+* Adjust overlay transparency.
+* Generate a predicted segmentation mask.
+* View the binary mask.
+* View the segmentation overlay on the original image.
+
+### Run the Application
+
+Install the required dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run CLI Script
-Run the local inference script which processes `assets/demo.png` and outputs the results to a new `output/` folder.
-```bash
-python app.py
-```
+Run the Streamlit application:
 
-### 3. Run Streamlit UI
-Start the interactive Streamlit application to upload your own images or test the included demo:
 ```bash
 streamlit run streamlit_app.py
 ```
 
-## ☁️ Streamlit Cloud Deployment Steps
+The application loads the trained model from:
 
-This application is fully optimized for Streamlit Cloud deployment:
-- Uses `opencv-python-headless` and explicitly includes `libgl1` in `packages.txt` for Linux headless environment compatibility.
-- Forces CPU mode automatically so it does not fail on CPU-only Streamlit instances.
-- Handles custom TensorFlow/Keras objects natively inside the model loader.
+```text
+model/semantic_segmentation_model.keras
+```
 
-**To deploy:**
-1. Commit this entire directory to a GitHub repository.
-2. Log into [Streamlit Community Cloud](https://share.streamlit.io/).
-3. Click "New app" and point it to your GitHub repository.
-4. Set the "Main file path" to `streamlit_app.py`.
-5. Click "Deploy"! The cloud environment will automatically install OS packages from `packages.txt` and Python packages from `requirements.txt`.
+## Project Structure
+
+```text
+Semantic-Segmentation-U-NET/
+│
+├── assets/
+│   └── demo.png
+│
+├── model/
+│   └── semantic_segmentation_model.keras
+│
+├── utils/
+│   ├── predictor.py
+│   ├── preprocessing.py
+│   └── visualization.py
+│
+├── app.py
+├── streamlit_app.py
+├── requirements.txt
+├── packages.txt
+└── README.md
+```
+
+## Technologies
+
+* Python
+* TensorFlow / Keras
+* U-Net
+* MobileNetV2
+* Transfer Learning
+* OpenCV
+* NumPy
+* Pillow
+* Streamlit
+* Matplotlib
+
+## Key Takeaways
+
+This project demonstrates an end-to-end semantic segmentation workflow, including:
+
+* Transfer learning with a pretrained CNN encoder.
+* U-Net architecture for pixel-level segmentation.
+* Custom Dice-based loss and evaluation.
+* Binary segmentation.
+* Early stopping and model checkpointing.
+* Image preprocessing and post-processing.
+* Morphological operations for mask refinement.
+* Interactive model inference through Streamlit.
+
+## Limitations
+
+The model's performance depends on the quality and diversity of the training and validation data.
+
+The validation Dice score is a useful measure of segmentation overlap, but it does not guarantee equally strong performance on images from different distributions.
+
+Further evaluation on a larger and more diverse test set would provide a stronger estimate of real-world generalization.
+
+## Future Improvements
+
+Possible improvements include:
+
+* Evaluating the model on a dedicated unseen test set.
+* Increasing dataset size and diversity.
+* Experimenting with different segmentation architectures.
+* Performing additional augmentation and hyperparameter tuning.
+* Comparing different pretrained encoders.
+* Adding more detailed segmentation metrics such as IoU.
+* Improving the deployment interface with additional visualization and batch-processing options.
